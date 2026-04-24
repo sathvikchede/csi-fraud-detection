@@ -671,7 +671,18 @@ about class imbalance:
 * **Top-K precision** — "of the 100 most suspicious test transactions, how many
   were actually fraud?" — the single number an analyst cares about in production.
 
-We deliberately do **not** report accuracy.
+### A note on accuracy
+
+The brief is explicit: "avoiding an **exclusive** reliance on accuracy". We
+therefore **report accuracy in the results table below, but do not use it for
+model ranking**. The reason is visible directly from the numbers: the fraud
+base rate is ~0.58%, so a trivial classifier that predicts "legit" for every
+transaction would score ~99.42% accuracy while catching zero fraud. Watch how
+every model below scores somewhere between 75% and 99% accuracy while their
+fraud-class F1 scores span two full orders of magnitude (from ~0.03 to ~0.92).
+Accuracy is included for completeness and to make the failure mode visible;
+fraud F1, PR-AUC and top-K precision are the metrics that actually drive any
+conclusion.
 """
 )
 
@@ -680,6 +691,7 @@ code(
 def summarise(name, y_true, y_pred, y_score, fit_time, score_time=None):
     cm = confusion_matrix(y_true, y_pred)
     tn, fp, fn, tp = cm.ravel()
+    acc = (tp + tn) / max(tp + fp + fn + tn, 1)
     prec_1 = tp / max(tp + fp, 1)
     rec_1 = tp / max(tp + fn, 1)
     f1_1 = 2 * prec_1 * rec_1 / max(prec_1 + rec_1, 1e-9)
@@ -693,6 +705,7 @@ def summarise(name, y_true, y_pred, y_score, fit_time, score_time=None):
     return {
         "model": name,
         "TP": int(tp), "FP": int(fp), "FN": int(fn), "TN": int(tn),
+        "accuracy": round(acc, 4),
         "precision_fraud": round(prec_1, 4),
         "recall_fraud": round(rec_1, 4),
         "f1_fraud": round(f1_1, 4),
